@@ -1,0 +1,1205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignment Manager - Yuldoshev Behruz</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-bg: #121212;
+            --secondary-bg: #1e1e1e;
+            --accent-color: #6366f1;
+            --text-primary: #f7f7f7;
+            --text-secondary: #b3b3b3;
+            --border-color: #333;
+            --hover-color: #2d2d2d;
+        }
+        
+        body {
+            background-color: var(--primary-bg);
+            color: var(--text-primary);
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        .content-wrapper {
+            display: flex;
+            flex: 1;
+        }
+        
+        .sidebar {
+            background-color: var(--secondary-bg);
+            border-right: 1px solid var(--border-color);
+        }
+        
+        .folder-item {
+            transition: all 0.2s;
+        }
+        
+        .folder-item:hover {
+            background-color: var(--hover-color);
+        }
+        
+        .folder-item.active {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        
+        .main-content {
+            flex: 1;
+        }
+        
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            background-color: var(--secondary-bg);
+            transition: all 0.3s;
+        }
+        
+        .upload-zone.drag-over {
+            border-color: var(--accent-color);
+            background-color: rgba(99, 102, 241, 0.1);
+        }
+        
+        .file-item, .link-item {
+            background-color: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s;
+        }
+        
+        .file-item:hover, .link-item:hover {
+            background-color: var(--hover-color);
+        }
+        
+        .file-icon {
+            font-size: 1.5rem;
+        }
+        
+        .btn {
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+        }
+        
+        .btn-primary {
+            background-color: var(--accent-color);
+        }
+        
+        .btn-danger {
+            background-color: #ef4444;
+        }
+        
+        .btn-success {
+            background-color: #10b981;
+        }
+        
+        .btn-secondary {
+            background-color: #475569;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--primary-bg);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+        
+        /* File type colors */
+        .file-type-pdf { color: #ef4444; }
+        .file-type-doc, .file-type-docx { color: #3b82f6; }
+        .file-type-xls, .file-type-xlsx { color: #10b981; }
+        .file-type-ppt, .file-type-pptx { color: #f59e0b; }
+        .file-type-zip, .file-type-rar { color: #8b5cf6; }
+        .file-type-img { color: #ec4899; }
+        .file-type-txt { color: #6b7280; }
+        .file-type-csv { color: #22c55e; }
+        .file-type-default { color: #94a3b8; }
+        
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        
+        .modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background-color: var(--secondary-bg);
+            border-radius: 8px;
+            max-width: 600px;
+            width: 100%;
+            padding: 20px;
+            position: relative;
+        }
+        
+        .link-preview-frame {
+            width: 100%;
+            height: 500px;
+            border: none;
+            background-color: white;
+        }
+        
+        .file-preview-container {
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow: auto;
+        }
+        
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip .tooltip-text {
+            visibility: hidden;
+            width: 120px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="bg-gray-900 p-4 shadow-md">
+            <div class="container mx-auto flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center mb-4 md:mb-0">
+                    <i class="fas fa-file-archive text-indigo-500 text-3xl mr-3"></i>
+                    <div>
+                        <h1 class="text-xl font-bold">Assignment Manager</h1>
+                        <p class="text-gray-400 text-sm">Your Personal File Repository</p>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end">
+                    <h2 class="font-bold text-lg">Yuldoshev Behruz</h2>
+                    <p class="text-gray-400 text-sm">ID: 2417724 | Dong-A University</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- Content area -->
+        <div class="content-wrapper">
+            <!-- Sidebar -->
+            <aside class="sidebar w-64 p-4 hidden md:block">
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold mb-2">Weeks</h3>
+                    <ul id="folder-list" class="space-y-1">
+                        <!-- Week folders will be generated here -->
+                    </ul>
+                </div>
+                
+                <div class="border-t border-gray-700 pt-4 mt-4">
+                    <h3 class="text-lg font-semibold mb-2">Statistics</h3>
+                    <div class="space-y-2 text-sm">
+                        <p>Total Files: <span id="total-files-count">0</span></p>
+                        <p>Total Links: <span id="total-links-count">0</span></p>
+                        <p>Storage Used: <span id="total-storage-used">0 KB</span></p>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Mobile sidebar toggle -->
+            <div class="md:hidden p-4 bg-gray-800">
+                <button id="mobile-sidebar-toggle" class="px-4 py-2 bg-gray-700 rounded-md">
+                    <i class="fas fa-bars"></i> Folders
+                </button>
+            </div>
+
+            <!-- Main content -->
+            <main class="main-content p-4 md:p-8">
+                <!-- Current path and search -->
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                    <div class="mb-4 md:mb-0">
+                        <h2 id="current-folder-name" class="text-2xl font-bold">All Files</h2>
+                        <p id="current-path" class="text-gray-400 text-sm">Home</p>
+                    </div>
+                    <div class="w-full md:w-auto flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+                        <div class="relative">
+                            <input type="text" id="search-input" placeholder="Search files..." 
+                                class="bg-gray-800 px-4 py-2 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <i class="fas fa-search absolute right-3 top-3 text-gray-500"></i>
+                        </div>
+                        <select id="filter-type" class="bg-gray-800 px-4 py-2 rounded-md border border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="all">All Types</option>
+                            <option value="document">Documents</option>
+                            <option value="image">Images</option>
+                            <option value="video">Videos</option>
+                            <option value="archive">Archives</option>
+                            <option value="link">Links</option>
+                            <option value="other">Others</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Upload zone -->
+                <div id="upload-zone" class="upload-zone rounded-lg p-8 mb-8 text-center">
+                    <input type="file" id="file-input" multiple class="hidden">
+                    <i class="fas fa-cloud-upload-alt text-4xl mb-3 text-gray-400"></i>
+                    <h3 class="text-xl font-semibold mb-2">Drag & Drop Files Here</h3>
+                    <p class="text-gray-400 mb-4">Or click to browse your files</p>
+                    <button id="browse-files-btn" class="btn btn-primary px-4 py-2 rounded-md">
+                        <i class="fas fa-folder-open mr-2"></i> Browse Files
+                    </button>
+                </div>
+
+                <!-- Add link section -->
+                <div class="bg-gray-800 rounded-lg p-4 mb-8">
+                    <h3 class="text-lg font-semibold mb-3">Add Link</h3>
+                    <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+                        <input type="text" id="link-title-input" placeholder="Link Title" 
+                            class="flex-1 bg-gray-700 px-4 py-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input type="url" id="link-url-input" placeholder="https://example.com" 
+                            class="flex-1 bg-gray-700 px-4 py-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button id="add-link-btn" class="btn btn-success px-4 py-2 rounded-md whitespace-nowrap">
+                            <i class="fas fa-plus-circle mr-2"></i> Add Link
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Content tabs -->
+                <div class="mb-6">
+                    <div class="border-b border-gray-700">
+                        <ul class="flex flex-wrap -mb-px">
+                            <li class="mr-2">
+                                <button id="tab-all" class="inline-block py-2 px-4 border-b-2 border-indigo-500 text-indigo-400 font-medium">
+                                    <i class="fas fa-th-large mr-2"></i> All
+                                </button>
+                            </li>
+                            <li class="mr-2">
+                                <button id="tab-files" class="inline-block py-2 px-4 border-b-2 border-transparent hover:text-gray-300 hover:border-gray-300 font-medium">
+                                    <i class="fas fa-file mr-2"></i> Files
+                                </button>
+                            </li>
+                            <li class="mr-2">
+                                <button id="tab-links" class="inline-block py-2 px-4 border-b-2 border-transparent hover:text-gray-300 hover:border-gray-300 font-medium">
+                                    <i class="fas fa-link mr-2"></i> Links
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Files and links grid -->
+                <div id="content-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <!-- Files and links will be displayed here -->
+                    <div class="text-center text-gray-400 p-8 col-span-full">
+                        <i class="fas fa-folder-open text-5xl mb-3"></i>
+                        <h3 class="text-xl font-semibold mb-2">No Files Yet</h3>
+                        <p>Upload your files or add links to get started</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Mobile sidebar -->
+        <div id="mobile-sidebar" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden">
+            <div class="bg-gray-900 w-64 h-full overflow-auto">
+                <div class="flex justify-between items-center p-4 border-b border-gray-700">
+                    <h3 class="text-lg font-semibold">Folders</h3>
+                    <button id="close-sidebar" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-4">
+                    <ul id="mobile-folder-list" class="space-y-1">
+                        <!-- Week folders will be generated here (mobile) -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add folder modal -->
+        <div id="add-folder-modal" class="modal">
+            <div class="modal-content">
+                <h3 class="text-xl font-semibold mb-4">Create New Folder</h3>
+                <input type="text" id="new-folder-name" placeholder="Folder Name" 
+                    class="w-full bg-gray-700 px-4 py-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4">
+                <div class="flex justify-end space-x-2">
+                    <button id="cancel-add-folder" class="btn btn-secondary px-4 py-2 rounded-md">Cancel</button>
+                    <button id="confirm-add-folder" class="btn btn-primary px-4 py-2 rounded-md">Create</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- File preview modal -->
+        <div id="file-preview-modal" class="modal">
+            <div class="modal-content max-w-4xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="preview-file-name" class="text-xl font-semibold">File Preview</h3>
+                    <button id="close-preview" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="file-preview-container" class="file-preview-container bg-white rounded-md overflow-hidden">
+                    <!-- File preview will be shown here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Link preview modal -->
+        <div id="link-preview-modal" class="modal">
+            <div class="modal-content max-w-4xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="preview-link-name" class="text-xl font-semibold">Link Preview</h3>
+                    <button id="close-link-preview" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <iframe id="link-preview-frame" class="link-preview-frame rounded-md"></iframe>
+            </div>
+        </div>
+
+        <!-- Confirm delete modal -->
+        <div id="confirm-delete-modal" class="modal">
+            <div class="modal-content">
+                <h3 class="text-xl font-semibold mb-4">Delete Confirmation</h3>
+                <p id="delete-message" class="mb-4">Are you sure you want to delete this item?</p>
+                <div class="flex justify-end space-x-2">
+                    <button id="cancel-delete" class="btn btn-secondary px-4 py-2 rounded-md">Cancel</button>
+                    <button id="confirm-delete" class="btn btn-danger px-4 py-2 rounded-md">Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast notification -->
+        <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg transition-opacity duration-300 opacity-0 pointer-events-none">
+            <span id="toast-message">Action completed successfully</span>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Application state
+            const state = {
+                currentFolder: 'root',
+                folders: {
+                    'root': { name: 'Home', path: 'Home', files: [], links: [] }
+                },
+                activeTab: 'all',
+                searchQuery: '',
+                filterType: 'all',
+                fileToDelete: null,
+                nextFileId: 1,
+                nextLinkId: 1,
+                fileCount: 0,
+                linkCount: 0,
+                storageUsed: 0
+            };
+
+            // Create week folders
+            function initializeWeekFolders() {
+                for (let i = 1; i <= 16; i++) {
+                    const folderName = `Week ${i}`;
+                    const folderId = `week-${i}`;
+                    state.folders[folderId] = {
+                        name: folderName,
+                        path: `Home / ${folderName}`,
+                        files: [],
+                        links: []
+                    };
+                }
+                renderFolders();
+            }
+
+            // Render folders in sidebar
+            function renderFolders() {
+                const folderList = document.getElementById('folder-list');
+                const mobileFolderList = document.getElementById('mobile-folder-list');
+                
+                folderList.innerHTML = '';
+                mobileFolderList.innerHTML = '';
+                
+                // Add root folder
+                const rootItem = createFolderItem('root', 'Home', 'fas fa-home');
+                folderList.appendChild(rootItem);
+                mobileFolderList.appendChild(rootItem.cloneNode(true));
+                
+                // Add week folders
+                for (let i = 1; i <= 16; i++) {
+                    const folderId = `week-${i}`;
+                    const folderItem = createFolderItem(folderId, `Week ${i}`, 'fas fa-folder');
+                    folderList.appendChild(folderItem);
+                    mobileFolderList.appendChild(folderItem.cloneNode(true));
+                }
+                
+                // Add event listeners to folder items
+                document.querySelectorAll('.folder-item').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const folderId = this.getAttribute('data-folder-id');
+                        changeFolder(folderId);
+                        
+                        // Close mobile sidebar if open
+                        document.getElementById('mobile-sidebar').classList.add('hidden');
+                    });
+                });
+            }
+
+            // Create folder item element
+            function createFolderItem(id, name, iconClass) {
+                const li = document.createElement('li');
+                li.className = 'folder-item flex items-center p-2 rounded-md cursor-pointer';
+                li.setAttribute('data-folder-id', id);
+                if (id === state.currentFolder) {
+                    li.classList.add('active');
+                }
+                
+                li.innerHTML = `
+                    <i class="${iconClass} mr-2"></i>
+                    <span>${name}</span>
+                    <span class="ml-auto text-xs text-gray-500 file-count">0</span>
+                `;
+                return li;
+            }
+
+            // Change current folder
+            function changeFolder(folderId) {
+                state.currentFolder = folderId;
+                updateUI();
+            }
+
+            // Update UI to reflect current state
+            function updateUI() {
+                // Update active folder in sidebar
+                document.querySelectorAll('.folder-item').forEach(item => {
+                    if (item.getAttribute('data-folder-id') === state.currentFolder) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+                
+                // Update folder name and path
+                const folder = state.folders[state.currentFolder];
+                document.getElementById('current-folder-name').textContent = folder.name;
+                document.getElementById('current-path').textContent = folder.path;
+                
+                // Render content
+                renderContent();
+                
+                // Update statistics
+                updateStatistics();
+            }
+
+            // Render files and links
+            function renderContent() {
+                const contentContainer = document.getElementById('content-container');
+                contentContainer.innerHTML = '';
+                
+                const folder = state.folders[state.currentFolder];
+                let visibleFiles = folder.files;
+                let visibleLinks = folder.links;
+                
+                // Apply search filter
+                if (state.searchQuery) {
+                    const query = state.searchQuery.toLowerCase();
+                    visibleFiles = visibleFiles.filter(file => 
+                        file.name.toLowerCase().includes(query)
+                    );
+                    visibleLinks = visibleLinks.filter(link => 
+                        link.title.toLowerCase().includes(query) || 
+                        link.url.toLowerCase().includes(query)
+                    );
+                }
+                
+                // Apply type filter
+                if (state.filterType !== 'all') {
+                    if (state.filterType === 'link') {
+                        visibleFiles = [];
+                    } else if (state.filterType === 'document') {
+                        visibleFiles = visibleFiles.filter(file => 
+                            ['pdf', 'doc', 'docx', 'txt', 'rtf'].includes(getFileExtension(file.name))
+                        );
+                        visibleLinks = [];
+                    } else if (state.filterType === 'image') {
+                        visibleFiles = visibleFiles.filter(file => 
+                            ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(getFileExtension(file.name))
+                        );
+                        visibleLinks = [];
+                    } else if (state.filterType === 'video') {
+                        visibleFiles = visibleFiles.filter(file => 
+                            ['mp4', 'webm', 'avi', 'mov', 'wmv'].includes(getFileExtension(file.name))
+                        );
+                        visibleLinks = [];
+                    } else if (state.filterType === 'archive') {
+                        visibleFiles = visibleFiles.filter(file => 
+                            ['zip', 'rar', '7z', 'tar', 'gz'].includes(getFileExtension(file.name))
+                        );
+                        visibleLinks = [];
+                    } else if (state.filterType === 'other') {
+                        visibleFiles = visibleFiles.filter(file => {
+                            const ext = getFileExtension(file.name);
+                            return !['pdf', 'doc', 'docx', 'txt', 'rtf', 
+                                     'jpg', 'jpeg', 'png', 'gif', 'svg', 'webp',
+                                     'mp4', 'webm', 'avi', 'mov', 'wmv',
+                                     'zip', 'rar', '7z', 'tar', 'gz'].includes(ext);
+                        });
+                        visibleLinks = [];
+                    }
+                }
+                
+                // Filter by tab
+                if (state.activeTab === 'files') {
+                    visibleLinks = [];
+                } else if (state.activeTab === 'links') {
+                    visibleFiles = [];
+                }
+                
+                // Display message if no content
+                if (visibleFiles.length === 0 && visibleLinks.length === 0) {
+                    contentContainer.innerHTML = `
+                        <div class="text-center text-gray-400 p-8 col-span-full">
+                            <i class="fas fa-folder-open text-5xl mb-3"></i>
+                            <h3 class="text-xl font-semibold mb-2">No Items Found</h3>
+                            <p>Upload files or add links to this folder</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // Add files
+                visibleFiles.forEach(file => {
+                    const fileItem = createFileItem(file);
+                    contentContainer.appendChild(fileItem);
+                });
+                
+                // Add links
+                visibleLinks.forEach(link => {
+                    const linkItem = createLinkItem(link);
+                    contentContainer.appendChild(linkItem);
+                });
+            }
+
+            // Create file item element
+            function createFileItem(file) {
+                const div = document.createElement('div');
+                div.className = 'file-item rounded-lg p-3 flex flex-col';
+                div.setAttribute('data-id', file.id);
+                
+                const iconClass = getFileIconClass(file.name);
+                const fileSize = formatFileSize(file.size);
+                const date = new Date(file.date).toLocaleDateString();
+                
+                div.innerHTML = `
+                    <div class="flex items-start mb-2">
+                        <i class="${iconClass} file-icon mr-3"></i>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-medium truncate" title="${file.name}">${file.name}</h4>
+                            <p class="text-xs text-gray-400">${fileSize} · ${date}</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-auto pt-2 border-t border-gray-700">
+                        <button class="view-file tooltip" data-id="${file.id}">
+                            <i class="fas fa-eye"></i>
+                            <span class="tooltip-text">View</span>
+                        </button>
+                        <button class="download-file tooltip" data-id="${file.id}">
+                            <i class="fas fa-download"></i>
+                            <span class="tooltip-text">Download</span>
+                        </button>
+                        <button class="delete-file tooltip" data-id="${file.id}">
+                            <i class="fas fa-trash-alt"></i>
+                            <span class="tooltip-text">Delete</span>
+                        </button>
+                    </div>
+                `;
+                
+                return div;
+            }
+
+            // Create link item element
+            function createLinkItem(link) {
+                const div = document.createElement('div');
+                div.className = 'link-item rounded-lg p-3 flex flex-col';
+                div.setAttribute('data-id', link.id);
+                
+                const date = new Date(link.date).toLocaleDateString();
+                
+                div.innerHTML = `
+                    <div class="flex items-start mb-2">
+                        <i class="fas fa-link file-icon mr-3 text-blue-400"></i>
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-medium truncate" title="${link.title}">${link.title}</h4>
+                            <p class="text-xs text-gray-400 truncate" title="${link.url}">${link.url}</p>
+                            <p class="text-xs text-gray-400">${date}</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-between mt-auto pt-2 border-t border-gray-700">
+                        <button class="view-link tooltip" data-id="${link.id}">
+                            <i class="fas fa-external-link-alt"></i>
+                            <span class="tooltip-text">Open</span>
+                        </button>
+                        <button class="copy-link tooltip" data-id="${link.id}">
+                            <i class="fas fa-copy"></i>
+                            <span class="tooltip-text">Copy URL</span>
+                        </button>
+                        <button class="delete-link tooltip" data-id="${link.id}">
+                            <i class="fas fa-trash-alt"></i>
+                            <span class="tooltip-text">Delete</span>
+                        </button>
+                    </div>
+                `;
+                
+                return div;
+            }
+
+            // Handle file upload
+            function handleFileUpload(files) {
+                const folder = state.folders[state.currentFolder];
+                
+                Array.from(files).forEach(file => {
+                    const fileId = state.nextFileId++;
+                    const fileObject = {
+                        id: fileId,
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        date: new Date().toISOString(),
+                        data: URL.createObjectURL(file)
+                    };
+                    
+                    folder.files.push(fileObject);
+                    state.fileCount++;
+                    state.storageUsed += file.size;
+                });
+                
+                updateUI();
+                showToast('Files uploaded successfully');
+            }
+
+            // Add link to current folder
+            function addLink(title, url) {
+                if (!title || !url) {
+                    showToast('Please enter both title and URL', 'error');
+                    return;
+                }
+                
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    url = 'https://' + url;
+                }
+                
+                const linkId = state.nextLinkId++;
+                const linkObject = {
+                    id: linkId,
+                    title: title,
+                    url: url,
+                    date: new Date().toISOString()
+                };
+                
+                state.folders[state.currentFolder].links.push(linkObject);
+                state.linkCount++;
+                
+                // Clear inputs
+                document.getElementById('link-title-input').value = '';
+                document.getElementById('link-url-input').value = '';
+                
+                updateUI();
+                showToast('Link added successfully');
+            }
+
+            // Delete file
+            function deleteFile(fileId) {
+                const folder = state.folders[state.currentFolder];
+                const fileIndex = folder.files.findIndex(file => file.id === fileId);
+                
+                if (fileIndex !== -1) {
+                    const file = folder.files[fileIndex];
+                    state.storageUsed -= file.size;
+                    state.fileCount--;
+                    folder.files.splice(fileIndex, 1);
+                    updateUI();
+                    showToast('File deleted successfully');
+                }
+            }
+
+            // Delete link
+            function deleteLink(linkId) {
+                const folder = state.folders[state.currentFolder];
+                const linkIndex = folder.links.findIndex(link => link.id === linkId);
+                
+                if (linkIndex !== -1) {
+                    state.linkCount--;
+                    folder.links.splice(linkIndex, 1);
+                    updateUI();
+                    showToast('Link deleted successfully');
+                }
+            }
+
+            // Update statistics
+            function updateStatistics() {
+                document.getElementById('total-files-count').textContent = state.fileCount;
+                document.getElementById('total-links-count').textContent = state.linkCount;
+                document.getElementById('total-storage-used').textContent = formatFileSize(state.storageUsed);
+                
+                // Update folder file counts
+                for (const folderId in state.folders) {
+                    const folder = state.folders[folderId];
+                    const count = folder.files.length + folder.links.length;
+                    
+                    document.querySelectorAll(`.folder-item[data-folder-id="${folderId}"] .file-count`).forEach(el => {
+                        el.textContent = count > 0 ? count : '';
+                    });
+                }
+            }
+
+            // Preview file
+            function previewFile(fileId) {
+                const folder = state.folders[state.currentFolder];
+                const file = folder.files.find(f => f.id === fileId);
+                
+                if (!file) return;
+                
+                const modal = document.getElementById('file-preview-modal');
+                const container = document.getElementById('file-preview-container');
+                const fileName = document.getElementById('preview-file-name');
+                
+                fileName.textContent = file.name;
+                container.innerHTML = '';
+                
+                const extension = getFileExtension(file.name).toLowerCase();
+                
+                // Create preview based on file type
+                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
+                    const img = document.createElement('img');
+                    img.src = file.data;
+                    img.className = 'max-w-full h-auto';
+                    container.appendChild(img);
+                } else if (['mp4', 'webm', 'ogg'].includes(extension)) {
+                    const video = document.createElement('video');
+                    video.src = file.data;
+                    video.controls = true;
+                    video.autoplay = false;
+                    video.className = 'max-w-full';
+                    video.setAttribute('playsinline', '');
+                    video.setAttribute('webkit-playsinline', '');
+                    container.appendChild(video);
+                } else if (['mp3', 'wav'].includes(extension)) {
+                    const audio = document.createElement('audio');
+                    audio.src = file.data;
+                    audio.controls = true;
+                    audio.className = 'w-full';
+                    container.appendChild(audio);
+                } else if (extension === 'pdf') {
+                    const embed = document.createElement('embed');
+                    embed.src = file.data;
+                    embed.type = 'application/pdf';
+                    embed.className = 'w-full h-screen';
+                    container.appendChild(embed);
+                } else if (['txt', 'csv', 'json'].includes(extension)) {
+                    // For text files, fetch and display content
+                    fetch(file.data)
+                        .then(response => response.text())
+                        .then(text => {
+                            const pre = document.createElement('pre');
+                            pre.className = 'bg-white text-black p-4 overflow-auto max-h-96';
+                            pre.textContent = text;
+                            container.appendChild(pre);
+                        })
+                        .catch(error => {
+                            container.innerHTML = `<div class="p-4 text-center">Error loading text: ${error.message}</div>`;
+                        });
+                } else {
+                    // For other file types, show download prompt
+                    container.innerHTML = `
+                        <div class="p-8 text-center">
+                            <i class="${getFileIconClass(file.name)} text-5xl mb-4"></i>
+                            <h3 class="text-xl font-semibold mb-2">Preview not available</h3>
+                            <p class="mb-4">This file type cannot be previewed in the browser.</p>
+                            <a href="${file.data}" download="${file.name}" class="btn btn-primary px-4 py-2 rounded-md inline-block">
+                                <i class="fas fa-download mr-2"></i> Download File
+                            </a>
+                        </div>
+                    `;
+                }
+                
+                modal.classList.add('show');
+            }
+
+            // Preview link
+            function previewLink(linkId) {
+                const folder = state.folders[state.currentFolder];
+                const link = folder.links.find(l => l.id === linkId);
+                
+                if (!link) return;
+                
+                const modal = document.getElementById('link-preview-modal');
+                const iframe = document.getElementById('link-preview-frame');
+                const linkName = document.getElementById('preview-link-name');
+                
+                linkName.textContent = link.title;
+                
+                try {
+                    iframe.src = link.url;
+                    modal.classList.add('show');
+                } catch (e) {
+                    showToast('Could not open link: ' + e.message, 'error');
+                }
+            }
+
+            // Helper functions
+            function getFileExtension(filename) {
+                return filename.split('.').pop().toLowerCase();
+            }
+
+            function getFileIconClass(filename) {
+                const ext = getFileExtension(filename);
+                
+                switch (ext) {
+                    case 'pdf':
+                        return 'fas fa-file-pdf file-type-pdf';
+                    case 'doc':
+                    case 'docx':
+                        return 'fas fa-file-word file-type-doc';
+                    case 'xls':
+                    case 'xlsx':
+                    case 'csv':
+                        return 'fas fa-file-excel file-type-xls';
+                    case 'ppt':
+                    case 'pptx':
+                        return 'fas fa-file-powerpoint file-type-ppt';
+                    case 'zip':
+                    case 'rar':
+                    case '7z':
+                    case 'tar':
+                    case 'gz':
+                        return 'fas fa-file-archive file-type-zip';
+                    case 'jpg':
+                    case 'jpeg':
+                    case 'png':
+                    case 'gif':
+                    case 'bmp':
+                    case 'svg':
+                    case 'webp':
+                        return 'fas fa-file-image file-type-img';
+                    case 'mp4':
+                    case 'avi':
+                    case 'mov':
+                    case 'wmv':
+                    case 'webm':
+                        return 'fas fa-file-video file-type-video';
+                    case 'mp3':
+                    case 'wav':
+                    case 'ogg':
+                        return 'fas fa-file-audio file-type-audio';
+                    case 'txt':
+                    case 'rtf':
+                        return 'fas fa-file-alt file-type-txt';
+                    case 'html':
+                    case 'htm':
+                    case 'xml':
+                    case 'css':
+                    case 'js':
+                        return 'fas fa-file-code file-type-code';
+                    default:
+                        return 'fas fa-file file-type-default';
+                }
+            }
+
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            function showToast(message, type = 'success') {
+                const toast = document.getElementById('toast');
+                const toastMessage = document.getElementById('toast-message');
+                
+                toastMessage.textContent = message;
+                
+                if (type === 'error') {
+                    toast.classList.add('bg-red-800');
+                    toast.classList.remove('bg-gray-800');
+                } else {
+                    toast.classList.add('bg-gray-800');
+                    toast.classList.remove('bg-red-800');
+                }
+                
+                toast.classList.add('opacity-100');
+                toast.classList.remove('opacity-0');
+                
+                setTimeout(() => {
+                    toast.classList.remove('opacity-100');
+                    toast.classList.add('opacity-0');
+                }, 3000);
+            }
+
+            // Event listeners
+            function setupEventListeners() {
+                // Upload zone events
+                const uploadZone = document.getElementById('upload-zone');
+                const fileInput = document.getElementById('file-input');
+                
+                uploadZone.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    this.classList.add('drag-over');
+                });
+                
+                uploadZone.addEventListener('dragleave', function() {
+                    this.classList.remove('drag-over');
+                });
+                
+                uploadZone.addEventListener('drop', function(e) {
+                    e.preventDefault();
+                    this.classList.remove('drag-over');
+                    
+                    if (e.dataTransfer.files.length > 0) {
+                        handleFileUpload(e.dataTransfer.files);
+                    }
+                });
+                
+                uploadZone.addEventListener('click', function() {
+                    fileInput.click();
+                });
+                
+                document.getElementById('browse-files-btn').addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    fileInput.click();
+                });
+                
+                fileInput.addEventListener('change', function() {
+                    if (this.files.length > 0) {
+                        handleFileUpload(this.files);
+                    }
+                });
+                
+                // Add link button
+                document.getElementById('add-link-btn').addEventListener('click', function() {
+                    const title = document.getElementById('link-title-input').value.trim();
+                    const url = document.getElementById('link-url-input').value.trim();
+                    addLink(title, url);
+                });
+                
+                // Tab buttons
+                document.getElementById('tab-all').addEventListener('click', function() {
+                    setActiveTab('all');
+                });
+                
+                document.getElementById('tab-files').addEventListener('click', function() {
+                    setActiveTab('files');
+                });
+                
+                document.getElementById('tab-links').addEventListener('click', function() {
+                    setActiveTab('links');
+                });
+                
+                // Search input
+                document.getElementById('search-input').addEventListener('input', function() {
+                    state.searchQuery = this.value.trim();
+                    renderContent();
+                });
+                
+                // Filter select
+                document.getElementById('filter-type').addEventListener('change', function() {
+                    state.filterType = this.value;
+                    renderContent();
+                });
+                
+                // Mobile sidebar toggle
+                document.getElementById('mobile-sidebar-toggle').addEventListener('click', function() {
+                    document.getElementById('mobile-sidebar').classList.remove('hidden');
+                });
+                
+                document.getElementById('close-sidebar').addEventListener('click', function() {
+                    document.getElementById('mobile-sidebar').classList.add('hidden');
+                });
+                
+                // Modal close buttons
+                document.getElementById('close-preview').addEventListener('click', function() {
+                    document.getElementById('file-preview-modal').classList.remove('show');
+                });
+                
+                document.getElementById('close-link-preview').addEventListener('click', function() {
+                    document.getElementById('link-preview-modal').classList.remove('show');
+                    document.getElementById('link-preview-frame').src = 'about:blank';
+                });
+                
+                // Item action handlers using event delegation
+                document.addEventListener('click', function(e) {
+                    // View file
+                    if (e.target.closest('.view-file')) {
+                        const fileId = parseInt(e.target.closest('.view-file').getAttribute('data-id'));
+                        previewFile(fileId);
+                    }
+                    
+                    // Delete file
+                    if (e.target.closest('.delete-file')) {
+                        const fileId = parseInt(e.target.closest('.delete-file').getAttribute('data-id'));
+                        confirmDelete('file', fileId);
+                    }
+                    
+                    // Download file
+                    if (e.target.closest('.download-file')) {
+                        const fileId = parseInt(e.target.closest('.download-file').getAttribute('data-id'));
+                        downloadFile(fileId);
+                    }
+                    
+                    // View link
+                    if (e.target.closest('.view-link')) {
+                        const linkId = parseInt(e.target.closest('.view-link').getAttribute('data-id'));
+                        previewLink(linkId);
+                    }
+                    
+                    // Delete link
+                    if (e.target.closest('.delete-link')) {
+                        const linkId = parseInt(e.target.closest('.delete-link').getAttribute('data-id'));
+                        confirmDelete('link', linkId);
+                    }
+                    
+                    // Copy link URL
+                    if (e.target.closest('.copy-link')) {
+                        const linkId = parseInt(e.target.closest('.copy-link').getAttribute('data-id'));
+                        copyLinkUrl(linkId);
+                    }
+                });
+                
+                // Delete confirmation
+                document.getElementById('cancel-delete').addEventListener('click', function() {
+                    document.getElementById('confirm-delete-modal').classList.remove('show');
+                    state.fileToDelete = null;
+                });
+                
+                document.getElementById('confirm-delete').addEventListener('click', function() {
+                    const modal = document.getElementById('confirm-delete-modal');
+                    
+                    if (state.fileToDelete) {
+                        if (state.fileToDelete.type === 'file') {
+                            deleteFile(state.fileToDelete.id);
+                        } else if (state.fileToDelete.type === 'link') {
+                            deleteLink(state.fileToDelete.id);
+                        }
+                    }
+                    
+                    modal.classList.remove('show');
+                    state.fileToDelete = null;
+                });
+            }
+
+            // Set active tab
+            function setActiveTab(tab) {
+                state.activeTab = tab;
+                
+                // Update tab UI
+                document.getElementById('tab-all').classList.remove('border-indigo-500', 'text-indigo-400');
+                document.getElementById('tab-files').classList.remove('border-indigo-500', 'text-indigo-400');
+                document.getElementById('tab-links').classList.remove('border-indigo-500', 'text-indigo-400');
+                
+                document.getElementById('tab-all').classList.add('border-transparent');
+                document.getElementById('tab-files').classList.add('border-transparent');
+                document.getElementById('tab-links').classList.add('border-transparent');
+                
+                document.getElementById(`tab-${tab}`).classList.remove('border-transparent');
+                document.getElementById(`tab-${tab}`).classList.add('border-indigo-500', 'text-indigo-400');
+                
+                renderContent();
+            }
+
+            // Download file
+            function downloadFile(fileId) {
+                const folder = state.folders[state.currentFolder];
+                const file = folder.files.find(f => f.id === fileId);
+                
+                if (!file) return;
+                
+                const a = document.createElement('a');
+                a.href = file.data;
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+
+            // Copy link URL
+            function copyLinkUrl(linkId) {
+                const folder = state.folders[state.currentFolder];
+                const link = folder.links.find(l => l.id === linkId);
+                
+                if (!link) return;
+                
+                navigator.clipboard.writeText(link.url)
+                    .then(() => showToast('URL copied to clipboard'))
+                    .catch(err => showToast('Failed to copy URL: ' + err.message, 'error'));
+            }
+
+            // Confirm delete
+            function confirmDelete(type, id) {
+                state.fileToDelete = { type, id };
+                
+                const modal = document.getElementById('confirm-delete-modal');
+                const message = document.getElementById('delete-message');
+                
+                if (type === 'file') {
+                    const file = state.folders[state.currentFolder].files.find(f => f.id === id);
+                    message.textContent = `Are you sure you want to delete "${file.name}"?`;
+                } else if (type === 'link') {
+                    const link = state.folders[state.currentFolder].links.find(l => l.id === id);
+                    message.textContent = `Are you sure you want to delete the link "${link.title}"?`;
+                }
+                
+                modal.classList.add('show');
+            }
+
+            // Initialize app
+            function init() {
+                initializeWeekFolders();
+                setupEventListeners();
+                updateUI();
+            }
+
+            init();
+        });
+    </script>
+</body>
+</html>
